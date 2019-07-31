@@ -2,10 +2,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -23,16 +20,19 @@ public class PartThree {
         List<String> lines = readFileInList(args[0]);
 
         // print file information back to the user
-        System.out.println("Number of processes: " + lines.size());
+        System.out.println("Number of processes: " + lines.size() + "\n");
         lines.forEach(System.out::println);
 
         // generate processes
         List<Process> processes = linesToProcesses(lines);
-//        processes.forEach(System.out::println); // toString() all the processes
 
         // Schedule and execute processes
         int currTime = 0;
         boolean notDone = true;
+        Process prevExecutedProcess = null;
+
+        // Create a map to manage round robin. Priority to ProcessQueue
+        Map<Integer, Queue<Process>> priorityToProcessQueue = new HashMap<>();
 
         while (notDone) {
             // determine task that have arrived by now and sort them by priority
@@ -40,15 +40,35 @@ public class PartThree {
             List<Process> arrived = processes.stream().filter(p -> p.getStartTime() <= finalTime).sorted(Comparator.comparing(Process::getPriority)).collect(Collectors.toList());
             int highestPriority = arrived.get(0).getPriority();
             arrived = arrived.stream().filter(p -> p.getPriority() == highestPriority).collect(Collectors.toList());
+            Process highestPriorityProcess;
             if (arrived.size() > 1) {
-                // TODO: Handle special case
-                System.out.println("RoundRobinSpecialCase!"); //TODO: Remove. Debugging.
+                // get queue from map for highest priority (if it exists)
+                Queue<Process> queue;
+                if (priorityToProcessQueue.containsKey(highestPriority)) {
+                    queue = priorityToProcessQueue.get(highestPriority);
+                } else {
+                    // create a new queue if it's not in the map.
+                    queue = new ArrayDeque<>();
+                    priorityToProcessQueue.put(highestPriority, queue);
+                }
+                // fill in the queue with processes
+                arrived = arrived.stream().sorted(Comparator.comparing(Process::getStartTime)).collect(Collectors.toList());
+                for (Process process : arrived) {
+                    if (!queue.contains(process) && !process.equals(prevExecutedProcess)) {
+                        queue.add(process);
+                    }
+                }
+                if (arrived.contains(prevExecutedProcess)) {
+                    queue.add(prevExecutedProcess);
+                }
+                // get process first in the highest priority queue
+                highestPriorityProcess = priorityToProcessQueue.get(highestPriority).remove();
+            } else {
+                highestPriorityProcess = arrived.get(0);
             }
-//            System.out.println("Processes at " + time); // TODO: Remove. Debugging
-//            arrived.forEach(System.out::println); // TODO: Remove. Debugging
+            // for round robin
+            prevExecutedProcess = highestPriorityProcess;
 
-            //TODO: if equal priority, should not be round robin.
-            Process highestPriorityProcess = arrived.get(0);
             int burst = highestPriorityProcess.getBurst() < 3 ? highestPriorityProcess.getBurst() : 3;
             // execute first process
             for (int i = 0; i < burst; i++) {
@@ -60,10 +80,10 @@ public class PartThree {
             // if no work left for the current process - remove it.
             if (highestPriorityProcess.getBurst() == 0) {
                 processes.remove(highestPriorityProcess);
+                if (priorityToProcessQueue.containsKey(highestPriority) && priorityToProcessQueue.get(highestPriority).contains(highestPriorityProcess)) {
+                    priorityToProcessQueue.get(highestPriority).remove(highestPriorityProcess);
+                }
             }
-
-//            System.out.println("Processes after burst at " + time); // TODO: Remove. Debugging
-//            arrived.forEach(System.out::println); // TODO: Remove. Debugging
 
             // determine if processes are left to run
             notDone = processes.size() > 0;
