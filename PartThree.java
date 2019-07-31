@@ -3,7 +3,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * This program is a third part of the second assignment.
@@ -28,8 +31,44 @@ public class PartThree {
 //        processes.forEach(System.out::println); // toString() all the processes
 
         // Schedule and execute processes
-        // TODO: Do it.
+        int currTime = 0;
+        boolean notDone = true;
 
+        while (notDone) {
+            // determine task that have arrived by now and sort them by priority
+            final int finalTime = currTime; // for lambda
+            List<Process> arrived = processes.stream().filter(p -> p.getStartTime() <= finalTime).sorted(Comparator.comparing(Process::getPriority)).collect(Collectors.toList());
+            int highestPriority = arrived.get(0).getPriority();
+            arrived = arrived.stream().filter(p -> p.getPriority() == highestPriority).collect(Collectors.toList());
+            if (arrived.size() > 1) {
+                // TODO: Handle special case
+                System.out.println("RoundRobinSpecialCase!"); //TODO: Remove. Debugging.
+            }
+//            System.out.println("Processes at " + time); // TODO: Remove. Debugging
+//            arrived.forEach(System.out::println); // TODO: Remove. Debugging
+
+            //TODO: if equal priority, should not be round robin.
+            Process highestPriorityProcess = arrived.get(0);
+            int burst = highestPriorityProcess.getBurst() < 3 ? highestPriorityProcess.getBurst() : 3;
+            // execute first process
+            for (int i = 0; i < burst; i++) {
+                System.out.println("Executing " + highestPriorityProcess.getProcessName() + " from " + currTime + " to " + (currTime + 1));
+                currTime++;
+            }
+
+            highestPriorityProcess.setBurst(highestPriorityProcess.getBurst() - burst);
+            // if no work left for the current process - remove it.
+            if (highestPriorityProcess.getBurst() == 0) {
+                processes.remove(highestPriorityProcess);
+            }
+
+//            System.out.println("Processes after burst at " + time); // TODO: Remove. Debugging
+//            arrived.forEach(System.out::println); // TODO: Remove. Debugging
+
+            // determine if processes are left to run
+            notDone = processes.size() > 0;
+
+        }
     }
 
     /**
@@ -96,6 +135,10 @@ public class PartThree {
             return burst;
         }
 
+        public void setBurst(int newBurst) {
+            this.burst = newBurst;
+        }
+
         public int getPriority() {
             return priority;
         }
@@ -108,6 +151,19 @@ public class PartThree {
                     ", burst=" + burst +
                     ", priority=" + priority +
                     '}';
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Process process = (Process) o;
+            return Objects.equals(processName, process.processName);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(processName);
         }
     }
 
