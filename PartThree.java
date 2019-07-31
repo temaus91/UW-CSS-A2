@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
  * This program is a third part of the second assignment.
  * It is design to take input from a file, and process it.
  * The scheduler will be implemented as a priority based round robin (preemtive) Quantum = 3.
+ * @author Artem Tarasenko
  */
 public class PartThree {
     public static void main (String[] args) {
