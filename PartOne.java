@@ -35,9 +35,9 @@ public class PartOne {
             // determine task that have arrived by now and sort them by priority
             final int finalTime = currTime; // for lambda
             List<Process> arrived = processes.stream().filter(p -> p.getStartTime() <= finalTime).sorted(Comparator.comparing(Process::getBurst)).collect(Collectors.toList());
-            Process highestPriorityProcess = arrived.get(0);
+            Process highestPriorityProcess = arrived.get(0); // shortest is highest priority
 
-            // execute first process
+            // execute the process
             System.out.println("Executing " + highestPriorityProcess.getProcessName() + " from " + currTime + " to " + (currTime + 1));
             currTime++;
 
