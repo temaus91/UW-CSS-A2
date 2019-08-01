@@ -3,6 +3,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -20,12 +21,19 @@ public class PartThree {
         // get file lines
         List<String> lines = readFileInList(args[0]);
 
-        // print file information back to the user
-        System.out.println("Number of processes: " + lines.size() + "\n");
-        lines.forEach(System.out::println);
-
         // generate processes
         List<Process> processes = linesToProcesses(lines);
+        int numOfProcesses = processes.size();
+
+        // print file information back to the user
+        System.out.println("Number of processes: " + numOfProcesses + "\n");
+        lines.forEach(System.out::println);
+
+        // create maps to track TAT, wait time, and total burst time
+        Map<String, Integer> processToBurstTime = processes.stream().collect(
+                Collectors.toMap(Process::getProcessName, Process::getBurst));
+        Map<String,Integer> processToTAT = new HashMap<>();
+        Map<String,Integer> processToWait = new HashMap<>();
 
         // Schedule and execute processes
         int currTime = 0;
@@ -80,6 +88,13 @@ public class PartThree {
             highestPriorityProcess.setBurst(highestPriorityProcess.getBurst() - burst);
             // if no work left for the current process - remove it.
             if (highestPriorityProcess.getBurst() == 0) {
+                // update metrics like wait and TAT times
+                String pName = highestPriorityProcess.getProcessName();
+                Integer pTAT = currTime - highestPriorityProcess.getStartTime();
+                Integer pWaitTime = pTAT - processToBurstTime.get(pName);
+                processToTAT.put(pName,pTAT);
+                processToWait.put(pName, pWaitTime);
+                // remove
                 processes.remove(highestPriorityProcess);
                 if (priorityToProcessQueue.containsKey(highestPriority) && priorityToProcessQueue.get(highestPriority).contains(highestPriorityProcess)) {
                     priorityToProcessQueue.get(highestPriority).remove(highestPriorityProcess);
@@ -88,8 +103,14 @@ public class PartThree {
 
             // determine if processes are left to run
             notDone = processes.size() > 0;
-
         }
+
+        // print TAT and avg Wait time
+        processToTAT.forEach( (pName, pTAT)-> System.out.println(pName + " TAT is: " + pTAT));
+        AtomicInteger totalWaitTime = new AtomicInteger();
+        processToWait.forEach( (pName, pWait) -> totalWaitTime.set(totalWaitTime.get() + pWait));
+        double avgWait = (double) totalWaitTime.get() / numOfProcesses;
+        System.out.println("Average wait time: " + avgWait);
     }
 
     /**
